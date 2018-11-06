@@ -1,0 +1,61 @@
+<launch>
+
+<!-- Read Required Command Line Arguments: -->
+<arg name="initial_pose" default="$(find zeta_rescue)/data/initial_pose.yaml"/>
+<arg name="map_file" default="$(find zeta_rescue)/data/engeo_map.yaml"/>
+<arg name="landmark_file" default="$(find zeta_rescue)/data/landmarks.csv"/>
+
+<!-- Read ar_track_alvar args: -->
+<arg name="marker_size" default="6" />
+<arg name="max_new_marker_error" default="0.08" />
+<arg name="max_track_error" default="0.2" />
+<arg name="cam_image_topic" default="/camera/rgb/image_rect_color" />
+<arg name="cam_info_topic" default="/camera/rgb/camera_info" />
+<arg name="output_frame" default="/camera_rgb_frame" />
+
+<!-- Load initial pose parameters from yaml file: -->
+<rosparam command="load" file="$(arg initial_pose)" />
+
+<!-- Launch the turtlebot: -->
+<include file="$(find turtlebot_bringup)/launch/minimal.launch"/>
+<include file="$(find turtlebot_bringup)/launch/3dsensor.launch"/>
+  
+<!-- Launch ar_track_alvar:  -->
+<node name="ar_track_alvar" pkg="ar_track_alvar"
+      type="individualMarkersNoKinect" respawn="false" output="screen"
+      args="$(arg marker_size) $(arg max_new_marker_error) $(arg
+      max_track_error) $(arg cam_image_topic) $(arg cam_info_topic)
+      $(arg output_frame)" />
+
+<!-- Kinect sensor 
+<arg name="3d_sensor" default="$(env TURTLEBOT_3D_SENSOR)"/>  
+<include file="$(find turtlebot_bringup)/launch/3dsensor.launch">
+    <arg name="rgb_processing" value="false" />
+    <arg name="depth_registration" value="false" />
+    <arg name="depth_processing" value="false" />
+    <arg name="scan_topic" value="/scan" />
+</include>
+-->
+
+<!-- Launch report button: -->
+<node name="report_button" pkg="zeta_rescue" type="button.py" />
+
+<!-- Launch map server: -->
+<node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
+
+<!-- Localization -->
+<include file="$(find zeta_rescue)/launch/custom_amcl.launch" >
+    <!-- Load initial pose parameters from yaml file: -->
+	<arg name="initial_pose" value="$(arg initial_pose)" />
+</include>
+
+<!-- Move Base: -->
+<include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml" />
+
+<!-- Launch rViz: -->
+<include file="$(find turtlebot_rviz_launchers)/launch/view_navigation.launch" />
+
+<!-- Launch rescue : -->
+<node name="rescue" pkg ="zeta_rescue" type="rescue.py" args="$(arg landmark_file)" output="screen" />
+
+</launch>
